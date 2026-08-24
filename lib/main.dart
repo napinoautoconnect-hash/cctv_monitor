@@ -1,48 +1,33 @@
-// import 'package:flutter/material.dart';
-// import 'screens/home_screen.dart';
-
-// void main() {
-//   WidgetsFlutterBinding.ensureInitialized();
-//   runApp(const CCTVApp());
-// }
-
-// class CCTVApp extends StatelessWidget {
-//   const CCTVApp({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       debugShowCheckedModeBanner: false,
-//       title: 'CCTV Monitor',
-//       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
-//       home: const HomeScreen(),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
-import 'screens/home_screen.dart';
+import 'package:cctv_monitor/screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // MediaKit initialize
+  // ====================================================
+  // MEDIakit INITIALIZE
+  // ====================================================
   MediaKit.ensureInitialized();
 
-  runApp(const CCTVMonitorApp());
+  runApp(const MyApp());
 }
 
-class CCTVMonitorApp extends StatelessWidget {
-  const CCTVMonitorApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0057B8)),
+        useMaterial3: true,
+      ),
       title: 'CCTV Monitor',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }

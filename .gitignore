@@ -43,3 +43,19 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android release signing
+android/key.properties
+*.jks
+*.keystore
+
+# Flutter / Android build
+build/
+android/.gradle/
+android/build/
+
+# Debug / crash files
+cctv_crash.txt
+crash_filtered.txt
+
+.vscode/

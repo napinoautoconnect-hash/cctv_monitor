@@ -18,7 +18,7 @@ class FullScreenPlayer extends StatelessWidget {
             Center(
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: CameraPlayer(url: camera.url),
+                child: CameraPlayer(rtspUrl: camera.url),
               ),
             ),
 
