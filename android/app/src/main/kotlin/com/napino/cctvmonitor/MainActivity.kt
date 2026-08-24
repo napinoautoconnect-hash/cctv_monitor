@@ -1,4 +1,4 @@
-package com.example.cctv_monitor
+package com.napino.cctvmonitor
 
 import io.flutter.embedding.android.FlutterActivity
 
