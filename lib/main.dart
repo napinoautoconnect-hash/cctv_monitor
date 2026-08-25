@@ -32,9 +32,12 @@
 //   }
 // }
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  MediaKit.ensureInitialized();
 
   runApp(const TestApp());
 }
@@ -50,7 +53,7 @@ class TestApp extends StatelessWidget {
         backgroundColor: Colors.white,
         body: Center(
           child: Text(
-            'iOS TEST OK',
+            'MEDIATEK OK',
             style: TextStyle(fontSize: 30, color: Colors.black),
           ),
         ),
