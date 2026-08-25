@@ -1,10 +1,11 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:media_kit/media_kit.dart';
 
 import '/models/camera_data.dart';
 import 'camera_player.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,41 +14,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-// =================================================================
-// HOME SCREEN STATE
-// =================================================================
-
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? selectedStage;
 
   bool _exitDialogShowing = false;
 
-  // ============================================================
-  // APP LIFECYCLE
-  // ============================================================
-
   AppLifecycleState? _lastLifecycleState;
 
-  // Every time app resumes, this value changes.
-  //
-  // Camera cards use this value in their key.
-  //
-  // Therefore:
-  //
-  // Android Home button
-  //       ↓
-  // App goes background
-  //       ↓
-  // User opens app again
-  //       ↓
-  // resume detected
-  //       ↓
-  // CameraPlayer gets fresh key
-  //       ↓
-  // CameraPlayer recreated
-  //       ↓
-  // RTSP starts again
-  //
   int _resumeGeneration = 0;
 
   // ============================================================
@@ -59,10 +32,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
+
+    // ==========================================================
+    // MEDIАKIT INITIALIZATION
+    //
+    // IMPORTANT:
+    // Do NOT initialize MediaKit in main.dart.
+    // It caused white screen on iOS startup.
+    //
+    // Here HomeScreen is already loaded, so initialize it here.
+    // ==========================================================
+
+    try {
+      MediaKit.ensureInitialized();
+
+      debugPrint('CCTV: MediaKit initialized from HomeScreen');
+    } catch (e) {
+      debugPrint('CCTV: MediaKit initialization error: $e');
+    }
   }
 
   // ============================================================
-  // APP LIFECYCLE CHANGE
+  // APP LIFECYCLE
   // ============================================================
 
   @override
@@ -72,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     debugPrint('CCTV APP LIFECYCLE: $state');
 
     // ----------------------------------------------------------
-    // APP GOING TO BACKGROUND
+    // BACKGROUND
     // ----------------------------------------------------------
 
     if (state == AppLifecycleState.inactive ||
@@ -85,20 +76,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     // ----------------------------------------------------------
-    // APP RETURNED TO FOREGROUND
+    // RESUMED
     // ----------------------------------------------------------
 
     if (state == AppLifecycleState.resumed) {
       debugPrint('CCTV APP: RESUMED');
 
-      // Only refresh camera players if app actually came
-      // from background.
       if (_lastLifecycleState == AppLifecycleState.paused ||
           _lastLifecycleState == AppLifecycleState.inactive) {
         _restartVisibleCameras();
       }
 
-      _lastLifecycleState = state;
+      _lastLifecycleState = AppLifecycleState.resumed;
     }
   }
 
@@ -109,10 +98,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _restartVisibleCameras() {
     if (!mounted) return;
 
-    debugPrint('CCTV: RESTARTING CAMERA PLAYERS AFTER RESUME');
+    debugPrint('CCTV: RESTARTING CAMERA PLAYERS');
 
-    // Small delay gives Android / Flutter time to restore
-    // Surface / Activity before recreating video widgets.
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
 
@@ -120,7 +107,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _resumeGeneration++;
       });
 
-      debugPrint('CCTV: CAMERA RESTART GENERATION = $_resumeGeneration');
+      debugPrint(
+        'CCTV: CAMERA RESTART GENERATION = '
+        '$_resumeGeneration',
+      );
     });
   }
 
@@ -140,7 +130,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ============================================================
 
   List<String> get stages {
-    // Same order as camera_data.dart.
     return cameraList.map((camera) => camera.stage).toSet().toList();
   }
 
@@ -169,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ============================================================
-  // FULL SCREEN
+  // FULL SCREEN CAMERA
   // ============================================================
 
   void openFullScreen(CameraData camera) {
@@ -184,97 +173,86 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ============================================================
 
   Future<bool> _showExitDialog() async {
-    // Prevent duplicate dialogs.
     if (_exitDialogShowing) {
       return false;
     }
 
     _exitDialogShowing = true;
 
-    final shouldExit = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            'Exit CCTV Monitor?',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            'All camera streams will be stopped before exiting.',
-          ),
-          actions: [
-            // --------------------------------------------------
-            // CANCEL
-            // --------------------------------------------------
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-              },
-              child: const Text('Cancel'),
+    try {
+      final shouldExit = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text(
+              'Exit CCTV Monitor?',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
+            content: const Text('Are you sure you want to exit?'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(false);
+                },
+                child: const Text('Cancel'),
+              ),
 
-            // --------------------------------------------------
-            // EXIT
-            // --------------------------------------------------
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: const Text('Exit'),
-            ),
-          ],
-        );
-      },
-    );
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(true);
+                },
+                child: const Text('Exit'),
+              ),
+            ],
+          );
+        },
+      );
 
-    _exitDialogShowing = false;
-
-    if (shouldExit != true) {
-      return false;
+      return shouldExit == true;
+    } finally {
+      _exitDialogShowing = false;
     }
-
-    // ==========================================================
-    // STOP ALL CAMERA PLAYERS
-    // ==========================================================
-
-    debugPrint('EXIT CONFIRMED - STOPPING ALL CAMERA PLAYERS');
-
-    await CameraPlayer.stopAllPlayers();
-
-    debugPrint('ALL CAMERA PLAYERS STOPPED');
-
-    return true;
   }
 
   // ============================================================
-  // HANDLE BACK / EXIT
+  // HANDLE BACK
   // ============================================================
 
   Future<void> _handleBackPress() async {
     if (!mounted) return;
 
-    final exit = await _showExitDialog();
+    final shouldExit = await _showExitDialog();
 
-    if (!exit) {
+    if (!shouldExit) {
       return;
     }
 
     if (!mounted) return;
 
-    // Close Android application.
+    // IMPORTANT:
+    // Camera cleanup is NOT awaited here.
+    // Back/Exit must never depend on CameraPlayer.
+
+    try {
+      CameraPlayer.stopAllPlayers().catchError((error) {
+        debugPrint('BACK: Camera cleanup error: $error');
+      });
+    } catch (e) {
+      debugPrint('BACK: Camera cleanup exception: $e');
+    }
+
+    // Android / existing behavior.
     await SystemNavigator.pop();
   }
 
-  // =============================================================
-  // HANDLE LOG OUT
-  // ===========================================================
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
   Future<void> _logout() async {
     if (!mounted) return;
 
-    // =============================================================
-    // LOGOUT CONFIRMATION
-    // =============================================================
     final shouldLogout = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -304,49 +282,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
     );
 
-    if (shouldLogout != true) return;
+    if (shouldLogout != true) {
+      return;
+    }
+
+    // ==========================================================
+    // LOGOUT MUST NOT DEPEND ON CAMERA
+    // ==========================================================
 
     try {
-      // =============================================================
-      // 1. STOP ALL CCTV CAMERA PLAYERS
-      // =============================================================
-      debugPrint('LOGOUT: Stopping all camera players...');
-
-      try {
-        await CameraPlayer.stopAllPlayers();
-      } catch (e) {
-        debugPrint('LOGOUT: Camera cleanup error: $e');
-      }
-
-      // =============================================================
-      // 2. CLEAR SHARED PREFERENCES
-      // =============================================================
-      debugPrint('LOGOUT: Clearing local session...');
-
       final prefs = await SharedPreferences.getInstance();
 
       await prefs.clear();
 
-      debugPrint('LOGOUT: SharedPreferences cleared.');
-
-      // =============================================================
-      // 3. CLOSE CURRENT ACTIVITY / APP
-      // =============================================================
-      if (!mounted) return;
-
-      debugPrint('LOGOUT: Closing CCTV application...');
-
-      await SystemNavigator.pop();
+      debugPrint('LOGOUT: SharedPreferences cleared');
     } catch (e) {
-      debugPrint('LOGOUT ERROR: $e');
-
-      // Even if cleanup has some issue,
-      // try to close the application.
-      if (mounted) {
-        await SystemNavigator.pop();
-      }
+      debugPrint('LOGOUT: Session clear error: $e');
     }
+
+    if (!mounted) return;
+
+    // ==========================================================
+    // START CAMERA CLEANUP WITHOUT BLOCKING LOGOUT
+    // ==========================================================
+
+    try {
+      CameraPlayer.stopAllPlayers().catchError((error) {
+        debugPrint('LOGOUT: Camera cleanup error: $error');
+      });
+    } catch (e) {
+      debugPrint('LOGOUT: Camera cleanup exception: $e');
+    }
+
+    // ==========================================================
+    // IMMEDIATELY GO TO LOGIN
+    // ==========================================================
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
+
   // ============================================================
   // BUILD
   // ============================================================
@@ -398,6 +375,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+
         // ======================================================
         // BODY
         // ======================================================
@@ -416,7 +394,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   children: [
                     const Text(
                       'Select Stage',
-
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -447,7 +424,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       items: stages.map((stage) {
                         return DropdownMenuItem<String>(
                           value: stage,
-
                           child: Text(stage),
                         );
                       }).toList(),
@@ -475,7 +451,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
 
-                        // Keep low.
                         cacheExtent: 50,
 
                         itemCount: cameras.length,
@@ -485,7 +460,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                           return _LazyCameraCard(
                             key: ValueKey(
-                              '${camera.rtspUrl}_$_resumeGeneration',
+                              '${camera.rtspUrl}_'
+                              '$_resumeGeneration',
                             ),
 
                             camera: camera,
@@ -512,7 +488,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-
         children: [
           Icon(icon, size: 60, color: Colors.blueGrey.shade300),
 
@@ -520,7 +495,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           Text(
             message,
-
             style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 15),
           ),
         ],
@@ -547,16 +521,8 @@ class _LazyCameraCard extends StatefulWidget {
   State<_LazyCameraCard> createState() => _LazyCameraCardState();
 }
 
-// =================================================================
-// LAZY CAMERA CARD STATE
-// =================================================================
-
 class _LazyCameraCardState extends State<_LazyCameraCard> {
   bool _shouldStartPlayer = false;
-
-  // ============================================================
-  // INIT
-  // ============================================================
 
   @override
   void initState() {
@@ -570,10 +536,6 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
       });
     });
   }
-
-  // ============================================================
-  // BUILD
-  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -618,7 +580,6 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
                     ),
                   ),
 
-                  // PORT
                   _PortBadge(port: widget.camera.port),
                 ],
               ),
@@ -634,7 +595,6 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
             child: _shouldStartPlayer
                 ? CameraPlayer(
                     key: ValueKey(widget.camera.rtspUrl),
-
                     rtspUrl: widget.camera.rtspUrl,
                   )
                 : Container(
@@ -643,7 +603,6 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
                     child: const Center(
                       child: Text(
                         'Waiting...',
-
                         style: TextStyle(color: Colors.white54, fontSize: 13),
                       ),
                     ),
@@ -673,7 +632,6 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
 
                   Text(
                     'Tap for full screen',
-
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.blueGrey.shade600,
@@ -705,7 +663,6 @@ class _PortBadge extends StatelessWidget {
 
       decoration: BoxDecoration(
         color: Colors.blueGrey.shade800,
-
         borderRadius: BorderRadius.circular(8),
       ),
 
@@ -735,16 +692,8 @@ class FullScreenCamera extends StatefulWidget {
   State<FullScreenCamera> createState() => _FullScreenCameraState();
 }
 
-// =================================================================
-// FULL SCREEN STATE
-// =================================================================
-
 class _FullScreenCameraState extends State<FullScreenCamera> {
   bool _isLandscape = true;
-
-  // ============================================================
-  // INIT
-  // ============================================================
 
   @override
   void initState() {
@@ -804,7 +753,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
   // ============================================================
 
   Future<void> _goBack() async {
-    // Restore portrait first.
     await SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -855,7 +803,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
               // ==================================================
               Container(
                 height: 56,
-
                 color: Colors.black,
 
                 child: Row(
@@ -882,7 +829,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                       ),
                     ),
 
-                    // PORT
                     Container(
                       margin: const EdgeInsets.only(right: 8),
 
@@ -908,7 +854,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                       ),
                     ),
 
-                    // ORIENTATION
                     IconButton(
                       onPressed: _toggleOrientation,
 
@@ -926,9 +871,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                 ),
               ),
 
-              // ==================================================
-              // VIDEO
-              // ==================================================
               // ==================================================
               // VIDEO
               // ==================================================
