@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('CCTV APP: BACKGROUND');
 
       _lastLifecycleState = state;
+
       return;
     }
 
@@ -81,7 +82,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _resumeGeneration++;
       });
 
-      debugPrint('CCTV: CAMERA RESTART GENERATION = $_resumeGeneration');
+      debugPrint(
+        'CCTV: CAMERA RESTART GENERATION = '
+        '$_resumeGeneration',
+      );
     });
   }
 
@@ -99,13 +103,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ============================================================
   // STAGES
   // ============================================================
+  //
+  // IMPORTANT:
+  // No alphabetical sorting.
+  //
+  // camera_data.dart me jis order me stages hain,
+  // wahi order dropdown me rahega.
+  //
+  // ============================================================
 
   List<String> get stages {
-    final result = cameraList.map((camera) => camera.stage).toSet().toList();
-
-    result.sort();
-
-    return result;
+    return cameraList.map((camera) => camera.stage).toSet().toList();
   }
 
   // ============================================================
@@ -128,12 +136,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (!mounted) return;
 
     // ----------------------------------------------------------
-    // Stop currently active players before switching stage.
-    // This prevents old RTSP streams from remaining alive.
+    // Stop old stage cameras.
     // ----------------------------------------------------------
 
     CameraPlayer.stopAllPlayers().catchError((error) {
-      debugPrint('STAGE CHANGE: Camera cleanup error: $error');
+      debugPrint(
+        'STAGE CHANGE: Camera cleanup error: '
+        '$error',
+      );
     });
 
     setState(() {
@@ -202,35 +212,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ============================================================
-  // BACK
+  // ANDROID BACK
   // ============================================================
 
   Future<void> _handleBackPress() async {
     if (!mounted) return;
 
-    final shouldExit = await _showExitDialog();
-
-    if (!shouldExit) {
+    // This method is only called on Android.
+    if (Theme.of(context).platform != TargetPlatform.android) {
       return;
     }
 
-    if (!mounted) return;
+    final shouldExit = await _showExitDialog();
+
+    if (!shouldExit || !mounted) {
+      return;
+    }
 
     // ----------------------------------------------------------
-    // Camera cleanup is intentionally NOT awaited.
-    // App exit must not depend on RTSP/player cleanup.
+    // Camera cleanup without blocking exit.
     // ----------------------------------------------------------
 
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
-        debugPrint('BACK: Camera cleanup error: $error');
+        debugPrint(
+          'BACK: Camera cleanup error: '
+          '$error',
+        );
       });
     } catch (e) {
-      debugPrint('BACK: Camera cleanup exception: $e');
+      debugPrint(
+        'BACK: Camera cleanup exception: '
+        '$e',
+      );
     }
 
     // ----------------------------------------------------------
-    // Android exit
+    // Android exit.
     // ----------------------------------------------------------
 
     await SystemNavigator.pop();
@@ -276,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     // ----------------------------------------------------------
-    // CLEAR LOGIN SESSION
+    // CLEAR SESSION
     // ----------------------------------------------------------
 
     try {
@@ -297,14 +315,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
-        debugPrint('LOGOUT: Camera cleanup error: $error');
+        debugPrint(
+          'LOGOUT: Camera cleanup error: '
+          '$error',
+        );
       });
     } catch (e) {
-      debugPrint('LOGOUT: Camera cleanup exception: $e');
+      debugPrint(
+        'LOGOUT: Camera cleanup exception: '
+        '$e',
+      );
     }
 
     // ----------------------------------------------------------
-    // GO LOGIN IMMEDIATELY
+    // GO TO LOGIN
     // ----------------------------------------------------------
 
     Navigator.of(context).pushAndRemoveUntil(
@@ -321,15 +345,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final cameras = camerasForSelectedStage;
 
+    final bool isAndroid = Theme.of(context).platform == TargetPlatform.android;
+
     return PopScope(
-      canPop: false,
+      // --------------------------------------------------------
+      // Android:
+      // We handle Back ourselves.
+      //
+      // iOS:
+      // Home is root, so don't show our exit dialog.
+      // --------------------------------------------------------
+      canPop: !isAndroid,
 
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) {
           return;
         }
 
-        _handleBackPress();
+        if (isAndroid) {
+          _handleBackPress();
+        }
       },
 
       child: Scaffold(
@@ -350,11 +385,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           foregroundColor: Colors.white,
 
-          leading: IconButton(
-            tooltip: 'Back',
-            onPressed: _handleBackPress,
-            icon: const Icon(Icons.arrow_back),
-          ),
+          // ----------------------------------------------------
+          // ANDROID = Back button
+          // iOS = No Back button
+          // ----------------------------------------------------
+          leading: isAndroid
+              ? IconButton(
+                  tooltip: 'Back',
+                  onPressed: _handleBackPress,
+                  icon: const Icon(Icons.arrow_back),
+                )
+              : null,
 
           actions: [
             IconButton(
@@ -376,8 +417,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // ==================================================
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+
                   children: [
                     const Text(
                       'Select Stage',
@@ -408,6 +451,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
 
+                      // ------------------------------------------------
+                      // IMPORTANT:
+                      // stages getter already preserves camera_data.dart
+                      // order. No sorting here.
+                      // ------------------------------------------------
                       items: stages.map((stage) {
                         return DropdownMenuItem<String>(
                           value: stage,
@@ -438,8 +486,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
 
-                        // Keep this small so Flutter doesn't
-                        // create a large number of RTSP players.
                         cacheExtent: 50,
 
                         itemCount: cameras.length,
@@ -477,6 +523,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+
         children: [
           Icon(icon, size: 60, color: Colors.blueGrey.shade300),
 
@@ -517,8 +564,6 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
   void initState() {
     super.initState();
 
-    // Wait until the card has actually been inserted
-    // into the widget tree before creating the player.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
@@ -544,7 +589,7 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
 
         children: [
           // ======================================================
-          // HEADER
+          // CAMERA HEADER
           // ======================================================
           InkWell(
             onTap: widget.onFullScreen,
@@ -728,7 +773,7 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
   }
 
   // ============================================================
-  // TOGGLE
+  // TOGGLE ORIENTATION
   // ============================================================
 
   Future<void> _toggleOrientation() async {
@@ -800,6 +845,7 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                   children: [
                     IconButton(
                       onPressed: _goBack,
+
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
 
