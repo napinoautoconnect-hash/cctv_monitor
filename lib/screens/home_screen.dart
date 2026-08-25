@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:media_kit/media_kit.dart';
 
 import '/models/camera_data.dart';
 import 'camera_player.dart';
@@ -24,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _resumeGeneration = 0;
 
   // ============================================================
-  // INIT STATE
+  // INIT
   // ============================================================
 
   @override
@@ -33,23 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addObserver(this);
 
-    // ==========================================================
-    // MEDIАKIT INITIALIZATION
-    //
-    // IMPORTANT:
-    // Do NOT initialize MediaKit in main.dart.
-    // It caused white screen on iOS startup.
-    //
-    // Here HomeScreen is already loaded, so initialize it here.
-    // ==========================================================
-
-    try {
-      MediaKit.ensureInitialized();
-
-      debugPrint('CCTV: MediaKit initialized from HomeScreen');
-    } catch (e) {
-      debugPrint('CCTV: MediaKit initialization error: $e');
-    }
+    debugPrint('CCTV HOME: HomeScreen initialized');
   }
 
   // ============================================================
@@ -62,22 +45,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     debugPrint('CCTV APP LIFECYCLE: $state');
 
-    // ----------------------------------------------------------
-    // BACKGROUND
-    // ----------------------------------------------------------
-
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       debugPrint('CCTV APP: BACKGROUND');
 
       _lastLifecycleState = state;
-
       return;
     }
-
-    // ----------------------------------------------------------
-    // RESUMED
-    // ----------------------------------------------------------
 
     if (state == AppLifecycleState.resumed) {
       debugPrint('CCTV APP: RESUMED');
@@ -92,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ============================================================
-  // RESTART VISIBLE CAMERAS
+  // RESTART CAMERAS AFTER RESUME
   // ============================================================
 
   void _restartVisibleCameras() {
@@ -100,17 +74,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     debugPrint('CCTV: RESTARTING CAMERA PLAYERS');
 
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
 
       setState(() {
         _resumeGeneration++;
       });
 
-      debugPrint(
-        'CCTV: CAMERA RESTART GENERATION = '
-        '$_resumeGeneration',
-      );
+      debugPrint('CCTV: CAMERA RESTART GENERATION = $_resumeGeneration');
     });
   }
 
@@ -130,7 +101,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ============================================================
 
   List<String> get stages {
-    return cameraList.map((camera) => camera.stage).toSet().toList();
+    final result = cameraList.map((camera) => camera.stage).toSet().toList();
+
+    result.sort();
+
+    return result;
   }
 
   // ============================================================
@@ -152,9 +127,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void onStageChanged(String? stage) {
     if (!mounted) return;
 
+    // ----------------------------------------------------------
+    // Stop currently active players before switching stage.
+    // This prevents old RTSP streams from remaining alive.
+    // ----------------------------------------------------------
+
+    CameraPlayer.stopAllPlayers().catchError((error) {
+      debugPrint('STAGE CHANGE: Camera cleanup error: $error');
+    });
+
     setState(() {
       selectedStage = stage;
+      _resumeGeneration++;
     });
+
+    debugPrint('CCTV: SELECTED STAGE = $selectedStage');
   }
 
   // ============================================================
@@ -197,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 },
                 child: const Text('Cancel'),
               ),
-
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop(true);
@@ -216,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   // ============================================================
-  // HANDLE BACK
+  // BACK
   // ============================================================
 
   Future<void> _handleBackPress() async {
@@ -230,9 +216,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (!mounted) return;
 
-    // IMPORTANT:
-    // Camera cleanup is NOT awaited here.
-    // Back/Exit must never depend on CameraPlayer.
+    // ----------------------------------------------------------
+    // Camera cleanup is intentionally NOT awaited.
+    // App exit must not depend on RTSP/player cleanup.
+    // ----------------------------------------------------------
 
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
@@ -242,7 +229,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('BACK: Camera cleanup exception: $e');
     }
 
-    // Android / existing behavior.
+    // ----------------------------------------------------------
+    // Android exit
+    // ----------------------------------------------------------
+
     await SystemNavigator.pop();
   }
 
@@ -270,7 +260,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               },
               child: const Text('Cancel'),
             ),
-
             ElevatedButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
@@ -286,9 +275,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // ==========================================================
-    // LOGOUT MUST NOT DEPEND ON CAMERA
-    // ==========================================================
+    // ----------------------------------------------------------
+    // CLEAR LOGIN SESSION
+    // ----------------------------------------------------------
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -302,9 +291,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (!mounted) return;
 
-    // ==========================================================
-    // START CAMERA CLEANUP WITHOUT BLOCKING LOGOUT
-    // ==========================================================
+    // ----------------------------------------------------------
+    // CAMERA CLEANUP
+    // ----------------------------------------------------------
 
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
@@ -314,9 +303,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('LOGOUT: Camera cleanup exception: $e');
     }
 
-    // ==========================================================
-    // IMMEDIATELY GO TO LOGIN
-    // ==========================================================
+    // ----------------------------------------------------------
+    // GO LOGIN IMMEDIATELY
+    // ----------------------------------------------------------
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -387,10 +376,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // ==================================================
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
                     const Text(
                       'Select Stage',
@@ -451,6 +438,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
 
+                        // Keep this small so Flutter doesn't
+                        // create a large number of RTSP players.
                         cacheExtent: 50,
 
                         itemCount: cameras.length,
@@ -528,6 +517,8 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
   void initState() {
     super.initState();
 
+    // Wait until the card has actually been inserted
+    // into the widget tree before creating the player.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
@@ -553,7 +544,7 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
 
         children: [
           // ======================================================
-          // CAMERA HEADER
+          // HEADER
           // ======================================================
           InkWell(
             onTap: widget.onFullScreen,
@@ -737,7 +728,7 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
   }
 
   // ============================================================
-  // TOGGLE ORIENTATION
+  // TOGGLE
   // ============================================================
 
   Future<void> _toggleOrientation() async {
@@ -809,7 +800,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                   children: [
                     IconButton(
                       onPressed: _goBack,
-
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                     ),
 
@@ -839,7 +829,6 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
 
                       decoration: BoxDecoration(
                         color: Colors.blueGrey.shade800,
-
                         borderRadius: BorderRadius.circular(7),
                       ),
 

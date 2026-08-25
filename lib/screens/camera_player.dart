@@ -16,30 +16,25 @@ class CameraPlayer extends StatefulWidget {
   // ============================================================
   // GLOBAL PLAYER REGISTRY
   // ============================================================
-  //
-  // Har active CameraPlayer yahan register hoga.
-  //
-  // Exit karte waqt:
-  //
-  // CameraPlayer.stopAllPlayers()
-  //
-  // call karke saare RTSP players ko properly stop/dispose
-  // kar sakte hain.
-  //
-  // ============================================================
 
   static final Set<_CameraPlayerState> _players = <_CameraPlayerState>{};
 
   static void _register(_CameraPlayerState player) {
     _players.add(player);
 
-    debugPrint('CameraPlayer REGISTERED | Total: ${_players.length}');
+    debugPrint(
+      'CameraPlayer REGISTERED | '
+      'Total: ${_players.length}',
+    );
   }
 
   static void _unregister(_CameraPlayerState player) {
     _players.remove(player);
 
-    debugPrint('CameraPlayer UNREGISTERED | Total: ${_players.length}');
+    debugPrint(
+      'CameraPlayer UNREGISTERED | '
+      'Total: ${_players.length}',
+    );
   }
 
   // ============================================================
@@ -47,10 +42,12 @@ class CameraPlayer extends StatefulWidget {
   // ============================================================
 
   static Future<void> stopAllPlayers() async {
-    debugPrint('');
     debugPrint('============================================');
+
     debugPrint('STOPPING ALL CCTV PLAYERS');
+
     debugPrint('Players: ${_players.length}');
+
     debugPrint('============================================');
 
     final players = List<_CameraPlayerState>.from(_players);
@@ -65,14 +62,10 @@ class CameraPlayer extends StatefulWidget {
 
     _players.clear();
 
-    // Android Surface / media_kit / mpv ko thoda
-    // time dena important hai.
-    await Future.delayed(const Duration(milliseconds: 400));
+    // Give Android Surface / mpv time to clean up.
+    await Future.delayed(const Duration(milliseconds: 250));
 
-    debugPrint('============================================');
     debugPrint('ALL CCTV PLAYERS STOPPED');
-    debugPrint('============================================');
-    debugPrint('');
   }
 }
 
@@ -99,7 +92,19 @@ class _CameraPlayerState extends State<CameraPlayer> {
 
   int _attempt = 0;
 
+  // ------------------------------------------------------------
+  // Three connection attempts.
+  // ------------------------------------------------------------
+
   static const int maxAttempts = 3;
+
+  // ------------------------------------------------------------
+  // RTSP timeout.
+  //
+  // 3 seconds was too aggressive for some CCTV streams.
+  // ------------------------------------------------------------
+
+  static const Duration connectionTimeout = Duration(seconds: 10);
 
   // ============================================================
   // INIT
@@ -109,41 +114,72 @@ class _CameraPlayerState extends State<CameraPlayer> {
   void initState() {
     super.initState();
 
-    // Register this player globally.
+    // ----------------------------------------------------------
+    // VERY IMPORTANT
+    //
+    // MediaKit must be initialized BEFORE Player() is created.
+    //
+    // We deliberately keep this here instead of HomeScreen.
+    // This means HomeScreen / logout / back are independent.
+    // ----------------------------------------------------------
+
+    try {
+      MediaKit.ensureInitialized();
+
+      debugPrint('CCTV: MediaKit initialized');
+    } catch (e) {
+      debugPrint('CCTV: MediaKit initialization error: $e');
+    }
+
+    // ----------------------------------------------------------
+    // REGISTER
+    // ----------------------------------------------------------
+
     CameraPlayer._register(this);
 
-    // ============================================================
-    // PLAYER
-    // ============================================================
+    // ----------------------------------------------------------
+    // CREATE PLAYER
+    // ----------------------------------------------------------
 
     _player = Player(
       configuration: const PlayerConfiguration(bufferSize: 4 * 1024 * 1024),
     );
 
+    // ----------------------------------------------------------
+    // CREATE VIDEO CONTROLLER
+    // ----------------------------------------------------------
+
     _controller = VideoController(_player);
 
-    // ============================================================
+    // ----------------------------------------------------------
     // ERROR LISTENER
-    // ============================================================
+    // ----------------------------------------------------------
 
     _errorSub = _player.stream.error.listen((error) {
       if (_disposed) return;
+
+      debugPrint('============================================');
 
       debugPrint('RTSP ERROR: $error');
 
       debugPrint('URL: ${widget.rtspUrl}');
 
+      debugPrint('============================================');
+
       _connectionFailed(error.toString());
     });
 
-    // ============================================================
+    // ----------------------------------------------------------
     // PLAYING LISTENER
-    // ============================================================
+    // ----------------------------------------------------------
 
     _playingSub = _player.stream.playing.listen((playing) {
       if (_disposed) return;
 
-      debugPrint('RTSP PLAYING: $playing | ${widget.rtspUrl}');
+      debugPrint(
+        'RTSP PLAYING: $playing | '
+        '${widget.rtspUrl}',
+      );
 
       if (playing) {
         _isPlaying = true;
@@ -163,12 +199,12 @@ class _CameraPlayerState extends State<CameraPlayer> {
       }
     });
 
-    // ============================================================
-    // INITIAL OPEN
-    // ============================================================
+    // ----------------------------------------------------------
+    // OPEN AFTER WIDGET IS READY
+    // ----------------------------------------------------------
 
     if (widget.visible) {
-      Future.delayed(const Duration(milliseconds: 200), () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_disposed && mounted && widget.visible) {
           _open();
         }
@@ -200,15 +236,17 @@ class _CameraPlayerState extends State<CameraPlayer> {
     }
 
     try {
-      // ----------------------------------------------------------
-      // Stop previous connection first
-      // ----------------------------------------------------------
+      // --------------------------------------------------------
+      // Stop old playback.
+      // --------------------------------------------------------
 
       try {
         await _player.stop();
       } catch (_) {}
 
-      if (_disposed) return;
+      if (_disposed || !mounted) {
+        return;
+      }
 
       _isPlaying = false;
 
@@ -222,28 +260,35 @@ class _CameraPlayerState extends State<CameraPlayer> {
 
       debugPrint('--------------------------------------------');
 
-      // ----------------------------------------------------------
+      // --------------------------------------------------------
       // OPEN RTSP
-      // ----------------------------------------------------------
+      // --------------------------------------------------------
 
-      await _player.open(
-        Media(widget.rtspUrl, extras: const {'rtsp_transport': 'tcp'}),
-        play: true,
+      final media = Media(
+        widget.rtspUrl,
+        extras: const {'rtsp_transport': 'tcp'},
       );
+
+      await _player.open(media, play: true);
 
       if (_disposed || !mounted) {
         return;
       }
 
-      // ----------------------------------------------------------
+      // --------------------------------------------------------
       // CONNECTION TIMEOUT
-      // ----------------------------------------------------------
+      // --------------------------------------------------------
 
-      _timeoutTimer = Timer(const Duration(seconds: 3), () {
-        if (_disposed || !mounted) return;
+      _timeoutTimer = Timer(connectionTimeout, () {
+        if (_disposed || !mounted) {
+          return;
+        }
 
         if (!_isPlaying) {
-          debugPrint('RTSP TIMEOUT - starting retry');
+          debugPrint(
+            'RTSP TIMEOUT: '
+            '${widget.rtspUrl}',
+          );
 
           _connectionFailed('Connection timeout');
         }
@@ -274,32 +319,39 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _isPlaying = false;
 
     // ----------------------------------------------------------
-    // AUTOMATIC RETRY
+    // RETRY
     // ----------------------------------------------------------
 
     if (_attempt < maxAttempts) {
       _attempt++;
 
-      debugPrint('RTSP RETRY $_attempt/$maxAttempts');
+      debugPrint(
+        'RTSP RETRY '
+        '$_attempt/$maxAttempts',
+      );
 
       _retryTimer?.cancel();
 
-      _retryTimer = Timer(const Duration(milliseconds: 400), () {
+      _retryTimer = Timer(const Duration(milliseconds: 700), () {
         if (!_disposed && mounted && widget.visible) {
           _open();
         }
       });
+
+      return;
     }
+
     // ----------------------------------------------------------
     // FINAL ERROR
     // ----------------------------------------------------------
-    else {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = error;
-        });
-      }
+
+    debugPrint('RTSP FINAL ERROR: $error');
+
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        _error = error;
+      });
     }
   }
 
@@ -308,7 +360,9 @@ class _CameraPlayerState extends State<CameraPlayer> {
   // ============================================================
 
   Future<void> _manualRetry() async {
-    if (_disposed || !mounted) return;
+    if (_disposed || !mounted) {
+      return;
+    }
 
     _retryTimer?.cancel();
     _retryTimer = null;
@@ -319,13 +373,22 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _attempt = 0;
     _isPlaying = false;
 
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+
     try {
       await _player.stop();
     } catch (_) {}
 
-    if (_disposed) return;
+    if (_disposed) {
+      return;
+    }
 
-    await Future.delayed(const Duration(milliseconds: 200));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     if (!_disposed && mounted && widget.visible) {
       _open();
@@ -361,14 +424,6 @@ class _CameraPlayerState extends State<CameraPlayer> {
   // ============================================================
   // STOP + DISPOSE
   // ============================================================
-  //
-  // Ye method specifically application exit ke liye hai.
-  //
-  // Pehle timers/subscriptions stop.
-  // Phir media player stop.
-  // Phir player dispose.
-  //
-  // ============================================================
 
   Future<void> stopAndDispose() async {
     if (_disposed) {
@@ -380,7 +435,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     debugPrint(widget.rtspUrl);
 
     // ----------------------------------------------------------
-    // Mark disposed FIRST
+    // Mark disposed FIRST.
     // ----------------------------------------------------------
 
     _disposed = true;
@@ -389,7 +444,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _isPlaying = false;
 
     // ----------------------------------------------------------
-    // Cancel timers
+    // Cancel timers.
     // ----------------------------------------------------------
 
     _retryTimer?.cancel();
@@ -399,7 +454,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _timeoutTimer = null;
 
     // ----------------------------------------------------------
-    // Cancel streams
+    // Cancel listeners.
     // ----------------------------------------------------------
 
     try {
@@ -414,7 +469,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _playingSub = null;
 
     // ----------------------------------------------------------
-    // Stop media player
+    // Stop player.
     // ----------------------------------------------------------
 
     try {
@@ -424,7 +479,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     }
 
     // ----------------------------------------------------------
-    // Dispose media player
+    // Dispose player.
     // ----------------------------------------------------------
 
     try {
@@ -434,7 +489,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     }
 
     // ----------------------------------------------------------
-    // Remove from registry
+    // Registry.
     // ----------------------------------------------------------
 
     CameraPlayer._unregister(this);
@@ -448,9 +503,9 @@ class _CameraPlayerState extends State<CameraPlayer> {
   void didUpdateWidget(covariant CameraPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // ==========================================================
+    // ----------------------------------------------------------
     // URL CHANGED
-    // ==========================================================
+    // ----------------------------------------------------------
 
     if (oldWidget.rtspUrl != widget.rtspUrl) {
       _retryTimer?.cancel();
@@ -475,9 +530,9 @@ class _CameraPlayerState extends State<CameraPlayer> {
       return;
     }
 
-    // ==========================================================
+    // ----------------------------------------------------------
     // VISIBILITY CHANGED
-    // ==========================================================
+    // ----------------------------------------------------------
 
     if (oldWidget.visible != widget.visible) {
       if (widget.visible) {
@@ -501,10 +556,6 @@ class _CameraPlayerState extends State<CameraPlayer> {
 
   @override
   void dispose() {
-    // ----------------------------------------------------------
-    // Prevent double dispose
-    // ----------------------------------------------------------
-
     if (_disposed) {
       CameraPlayer._unregister(this);
 
@@ -518,7 +569,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _isPlaying = false;
 
     // ----------------------------------------------------------
-    // Cancel timers
+    // Cancel timers.
     // ----------------------------------------------------------
 
     _retryTimer?.cancel();
@@ -528,7 +579,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _timeoutTimer = null;
 
     // ----------------------------------------------------------
-    // Cancel listeners
+    // Cancel listeners.
     // ----------------------------------------------------------
 
     _errorSub?.cancel();
@@ -538,7 +589,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _playingSub = null;
 
     // ----------------------------------------------------------
-    // Stop player
+    // Stop player.
     // ----------------------------------------------------------
 
     try {
@@ -546,7 +597,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     } catch (_) {}
 
     // ----------------------------------------------------------
-    // Dispose player
+    // Dispose player.
     // ----------------------------------------------------------
 
     try {
@@ -554,7 +605,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
     } catch (_) {}
 
     // ----------------------------------------------------------
-    // Remove registry
+    // Registry.
     // ----------------------------------------------------------
 
     CameraPlayer._unregister(this);
@@ -569,7 +620,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF0057B8),
+      color: Colors.black,
 
       child: Stack(
         alignment: Alignment.center,
@@ -581,7 +632,9 @@ class _CameraPlayerState extends State<CameraPlayer> {
           Positioned.fill(
             child: Video(
               controller: _controller,
+
               controls: NoVideoControls,
+
               fit: BoxFit.contain,
             ),
           ),
@@ -593,20 +646,31 @@ class _CameraPlayerState extends State<CameraPlayer> {
             const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: Colors.white),
+                SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                ),
 
                 SizedBox(height: 12),
 
-                Text('Connecting...', style: TextStyle(color: Colors.white)),
+                Text(
+                  'Connecting...',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
               ],
             ),
 
           // ======================================================
-          // ERROR + RETRY
+          // ERROR
           // ======================================================
           if (_error != null && !_loading)
             Column(
               mainAxisSize: MainAxisSize.min,
+
               children: [
                 const Icon(Icons.videocam_off, color: Colors.white54, size: 45),
 
@@ -621,6 +685,7 @@ class _CameraPlayerState extends State<CameraPlayer> {
 
                 ElevatedButton(
                   onPressed: _manualRetry,
+
                   child: const Text('Retry'),
                 ),
               ],
