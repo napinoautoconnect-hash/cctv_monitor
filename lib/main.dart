@@ -32,32 +32,27 @@
 //   }
 // }
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:cctv_monitor/screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  MediaKit.ensureInitialized();
-
-  runApp(const TestApp());
+  runApp(const MyApp());
 }
 
-class TestApp extends StatelessWidget {
-  const TestApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(
-          child: Text(
-            'MEDIATEK OK',
-            style: TextStyle(fontSize: 30, color: Colors.black),
-          ),
-        ),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0057B8)),
+        useMaterial3: true,
       ),
+      title: 'CCTV Monitor',
+      home: const SplashScreen(),
     );
   }
 }

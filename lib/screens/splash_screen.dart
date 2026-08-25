@@ -44,14 +44,38 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkSession() async {
-    await Future.delayed(const Duration(milliseconds: 2200));
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    if (!mounted) return;
+      final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
+      await Future.delayed(const Duration(milliseconds: 2200));
+
+      if (!mounted) return;
+
+      if (isLoggedIn) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    } catch (e) {
+      debugPrint('SESSION CHECK ERROR: $e');
+
+      if (!mounted) return;
+
+      // Agar session read fail ho jaye,
+      // user ko login screen par bhej denge.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
   }
   // Future<void> _checkSession() async {
   //   final prefs = await SharedPreferences.getInstance();
