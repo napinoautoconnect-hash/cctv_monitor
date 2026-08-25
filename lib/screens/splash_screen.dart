@@ -44,26 +44,36 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkSession() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
     await Future.delayed(const Duration(milliseconds: 2200));
 
     if (!mounted) return;
 
-    if (isLoggedIn) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
+  // Future<void> _checkSession() async {
+  //   final prefs = await SharedPreferences.getInstance();
+
+  //   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+  //   await Future.delayed(const Duration(milliseconds: 2200));
+
+  //   if (!mounted) return;
+
+  //   if (isLoggedIn) {
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(builder: (_) => const HomeScreen()),
+  //     );
+  //   } else {
+  //     Navigator.pushReplacement(
+  //       context,
+  //       MaterialPageRoute(builder: (_) => const LoginScreen()),
+  //     );
+  //   }
+  // }
 
   @override
   void dispose() {
