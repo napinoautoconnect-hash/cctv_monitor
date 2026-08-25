@@ -123,13 +123,13 @@ class _CameraPlayerState extends State<CameraPlayer> {
     // This means HomeScreen / logout / back are independent.
     // ----------------------------------------------------------
 
-    try {
-      MediaKit.ensureInitialized();
+    // try {
+    //   MediaKit.ensureInitialized();
 
-      debugPrint('CCTV: MediaKit initialized');
-    } catch (e) {
-      debugPrint('CCTV: MediaKit initialization error: $e');
-    }
+    //   debugPrint('CCTV: MediaKit initialized');
+    // } catch (e) {
+    //   debugPrint('CCTV: MediaKit initialization error: $e');
+    // }
 
     // ----------------------------------------------------------
     // REGISTER
