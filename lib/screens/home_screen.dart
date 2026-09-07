@@ -5,6 +5,64 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '/models/camera_data.dart';
 import 'camera_player.dart';
 import 'login_screen.dart';
+import '../serivce/update_checker.dart';
+// ============================================================================
+// CUSTOM ZONE ORDER
+// ============================================================================
+//
+// IMPORTANT:
+// 1. Ye global custom order hai.
+// 2. Har plant ke saare zones yahan hona zaroori nahi.
+// 3. Selected plant ke available zones me se sirf matching zones show honge.
+// 4. Agar camera_data.dart me koi NEW zone hai jo yahan nahi hai,
+//    to wo dropdown ke END me automatically show hoga.
+//
+// ============================================================================
+
+const List<String> zoneOrder = [
+  'AWP',
+  'WIP',
+  'MWH Assy',
+  'Switch Assy',
+  'ED Shop Floor',
+  'SMT',
+  'Through Hole',
+  'Battery Charger',
+  'Shop Floor',
+  'Store',
+  'Store MWH',
+  'Store ED',
+  'Office',
+  'Dock Area',
+  'Outer Periphery & Gates',
+  'Office Ground Floor',
+  'Office 1St Floor',
+  'Maintenance',
+  'Premises Outside',
+  'Canteen',
+  'Training Room',
+  'Rework Areas',
+  'Terrace',
+  'Reception',
+  'Lab',
+  'IT / Server Room',
+  'Switch',
+  'Material Gate',
+  'FG Area',
+  'Parking',
+  'Dispatch',
+  'Gallery',
+  'Scrap Yard',
+  'Stairs',
+  'Zone 1',
+  'Zone 2',
+  'Zone 3',
+  'Zone 4',
+];
+
+// ============================================================================
+// HOME SCREEN
+// ============================================================================
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,7 +72,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  String? selectedStage;
+  // ==========================================================================
+  // SELECTION
+  // ==========================================================================
+
+  String? selectedPlant;
+  String? selectedZone;
 
   bool _exitDialogShowing = false;
 
@@ -22,9 +85,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   int _resumeGeneration = 0;
 
-  // ============================================================
+  // ==========================================================================
   // INIT
-  // ============================================================
+  // ==========================================================================
 
   @override
   void initState() {
@@ -33,11 +96,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     debugPrint('CCTV HOME: HomeScreen initialized');
+
+    // ------------------------------------------------------------
+    // CHECK FOR APP UPDATE
+    // ------------------------------------------------------------
+    //
+    // First frame render hone ke baad check kar rahe hain,
+    // taaki HomeScreen ka BuildContext properly available ho.
+    //
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+
+      debugPrint('CCTV HOME: Calling UpdateChecker');
+
+      await UpdateChecker.checkForUpdate(context);
+
+      if (!mounted) return;
+
+      debugPrint('CCTV HOME: UpdateChecker completed');
+    });
   }
 
-  // ============================================================
+  // ==========================================================================
   // APP LIFECYCLE
-  // ============================================================
+  // ==========================================================================
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -66,9 +148,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ============================================================
+  // ==========================================================================
   // RESTART CAMERAS AFTER RESUME
-  // ============================================================
+  // ==========================================================================
 
   void _restartVisibleCameras() {
     if (!mounted) return;
@@ -82,16 +164,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _resumeGeneration++;
       });
 
-      debugPrint(
-        'CCTV: CAMERA RESTART GENERATION = '
-        '$_resumeGeneration',
-      );
+      debugPrint('CCTV: CAMERA RESTART GENERATION = $_resumeGeneration');
     });
   }
 
-  // ============================================================
+  // ==========================================================================
   // DISPOSE
-  // ============================================================
+  // ==========================================================================
 
   @override
   void dispose() {
@@ -100,63 +179,156 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // ============================================================
-  // STAGES
-  // ============================================================
+  // ==========================================================================
+  // PLANTS
+  // ==========================================================================
   //
-  // IMPORTANT:
-  // No alphabetical sorting.
+  // Plant order camera_data.dart ke order ke according rahega.
   //
-  // camera_data.dart me jis order me stages hain,
-  // wahi order dropdown me rahega.
-  //
-  // ============================================================
+  // ==========================================================================
 
-  List<String> get stages {
-    return cameraList.map((camera) => camera.stage).toSet().toList();
+  List<String> get plants {
+    return cameraList.map((camera) => camera.plant).toSet().toList();
   }
 
-  // ============================================================
-  // CAMERAS FOR SELECTED STAGE
-  // ============================================================
+  // ==========================================================================
+  // ZONES FOR SELECTED PLANT
+  // ==========================================================================
+  //
+  // IMPORTANT:
+  //
+  // Global zoneOrder ke according sorting hogi.
+  //
+  // Lekin selected plant ke jo zones actually available hain,
+  // sirf wahi show honge.
+  //
+  // Example:
+  //
+  // Bhiwadi:
+  //   AWP
+  //   WIP
+  //   Dock Area
+  //
+  // Agar R&D nahi hai to R&D nahi dikhega.
+  //
+  // Agar koi NEW zone camera_data.dart me hai aur zoneOrder me nahi hai,
+  // to wo end me automatically add ho jayega.
+  //
+  // ==========================================================================
 
-  List<CameraData> get camerasForSelectedStage {
-    if (selectedStage == null) {
+  List<String> get zonesForSelectedPlant {
+    if (selectedPlant == null) {
       return [];
     }
 
-    return cameraList.where((camera) => camera.stage == selectedStage).toList();
+    // ------------------------------------------------------------
+    // Selected plant ke actual available zones
+    // ------------------------------------------------------------
+
+    final availableZones = cameraList
+        .where((camera) => camera.plant == selectedPlant)
+        .map((camera) => camera.zone)
+        .toSet();
+
+    // ------------------------------------------------------------
+    // Custom order ke according available zones
+    // ------------------------------------------------------------
+
+    final sortedZones = zoneOrder
+        .where((zone) => availableZones.contains(zone))
+        .toList();
+
+    // ------------------------------------------------------------
+    // New zones jo custom order me nahi hain
+    // Unko end me show karo.
+    // ------------------------------------------------------------
+
+    final customZones = availableZones
+        .where((zone) => !zoneOrder.contains(zone))
+        .toList();
+
+    return [...sortedZones, ...customZones];
   }
 
-  // ============================================================
-  // STAGE CHANGE
-  // ============================================================
+  // ==========================================================================
+  // CAMERAS FOR SELECTED PLANT + ZONE
+  // ==========================================================================
 
-  void onStageChanged(String? stage) {
+  List<CameraData> get camerasForSelectedZone {
+    if (selectedPlant == null || selectedZone == null) {
+      return [];
+    }
+
+    return cameraList
+        .where(
+          (camera) =>
+              camera.plant == selectedPlant && camera.zone == selectedZone,
+        )
+        .toList();
+  }
+
+  // ==========================================================================
+  // PLANT CHANGE
+  // ==========================================================================
+
+  void onPlantChanged(String? plant) {
     if (!mounted) return;
 
-    // ----------------------------------------------------------
-    // Stop old stage cameras.
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
+    // Stop currently playing cameras.
+    // ------------------------------------------------------------
 
     CameraPlayer.stopAllPlayers().catchError((error) {
-      debugPrint(
-        'STAGE CHANGE: Camera cleanup error: '
-        '$error',
-      );
+      debugPrint('PLANT CHANGE: Camera cleanup error: $error');
     });
 
     setState(() {
-      selectedStage = stage;
+      selectedPlant = plant;
+
+      // Plant change par zone reset.
+      selectedZone = null;
+
       _resumeGeneration++;
     });
 
-    debugPrint('CCTV: SELECTED STAGE = $selectedStage');
+    debugPrint('CCTV: SELECTED PLANT = $selectedPlant');
+
+    debugPrint('CCTV: ZONE RESET');
   }
 
-  // ============================================================
+  // ==========================================================================
+  // ZONE CHANGE
+  // ==========================================================================
+
+  void onZoneChanged(String? zone) {
+    if (!mounted) return;
+
+    // ------------------------------------------------------------
+    // Stop old zone cameras.
+    // ------------------------------------------------------------
+
+    CameraPlayer.stopAllPlayers().catchError((error) {
+      debugPrint('ZONE CHANGE: Camera cleanup error: $error');
+    });
+
+    setState(() {
+      selectedZone = zone;
+
+      _resumeGeneration++;
+    });
+
+    debugPrint('CCTV: SELECTED PLANT = $selectedPlant');
+
+    debugPrint('CCTV: SELECTED ZONE = $selectedZone');
+  }
+
+  // ==========================================================================
   // FULL SCREEN CAMERA
-  // ============================================================
+  // ==========================================================================
+  //
+  // Existing fullscreen logic unchanged.
+  //
+  // ==========================================================================
 
   void openFullScreen(CameraData camera) {
     Navigator.push(
@@ -165,9 +337,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
+  // ==========================================================================
   // EXIT DIALOG
-  // ============================================================
+  // ==========================================================================
 
   Future<bool> _showExitDialog() async {
     if (_exitDialogShowing) {
@@ -211,14 +383,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ============================================================
+  // ==========================================================================
   // ANDROID BACK
-  // ============================================================
+  // ==========================================================================
 
   Future<void> _handleBackPress() async {
     if (!mounted) return;
 
-    // This method is only called on Android.
     if (Theme.of(context).platform != TargetPlatform.android) {
       return;
     }
@@ -229,34 +400,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
     // Camera cleanup without blocking exit.
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
 
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
-        debugPrint(
-          'BACK: Camera cleanup error: '
-          '$error',
-        );
+        debugPrint('BACK: Camera cleanup error: $error');
       });
     } catch (e) {
-      debugPrint(
-        'BACK: Camera cleanup exception: '
-        '$e',
-      );
+      debugPrint('BACK: Camera cleanup exception: $e');
     }
 
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
     // Android exit.
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
 
     await SystemNavigator.pop();
   }
 
-  // ============================================================
+  // ==========================================================================
   // LOGOUT
-  // ============================================================
+  // ==========================================================================
 
   Future<void> _logout() async {
     if (!mounted) return;
@@ -293,9 +458,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
     // CLEAR SESSION
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -309,27 +474,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (!mounted) return;
 
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
     // CAMERA CLEANUP
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
 
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
-        debugPrint(
-          'LOGOUT: Camera cleanup error: '
-          '$error',
-        );
+        debugPrint('LOGOUT: Camera cleanup error: $error');
       });
     } catch (e) {
-      debugPrint(
-        'LOGOUT: Camera cleanup exception: '
-        '$e',
-      );
+      debugPrint('LOGOUT: Camera cleanup exception: $e');
     }
 
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
     // GO TO LOGIN
-    // ----------------------------------------------------------
+    // ------------------------------------------------------------
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -337,24 +496,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
+  // ==========================================================================
   // BUILD
-  // ============================================================
+  // ==========================================================================
 
   @override
   Widget build(BuildContext context) {
-    final cameras = camerasForSelectedStage;
+    final cameras = camerasForSelectedZone;
 
     final bool isAndroid = Theme.of(context).platform == TargetPlatform.android;
 
     return PopScope(
-      // --------------------------------------------------------
-      // Android:
-      // We handle Back ourselves.
-      //
-      // iOS:
-      // Home is root, so don't show our exit dialog.
-      // --------------------------------------------------------
       canPop: !isAndroid,
 
       onPopInvokedWithResult: (bool didPop, dynamic result) {
@@ -370,9 +522,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F6F8),
 
-        // ======================================================
+        // ====================================================================
         // APP BAR
-        // ======================================================
+        // ====================================================================
         appBar: AppBar(
           title: const Text(
             'CCTV Monitor',
@@ -385,10 +537,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           foregroundColor: Colors.white,
 
-          // ----------------------------------------------------
-          // ANDROID = Back button
-          // iOS = No Back button
-          // ----------------------------------------------------
           leading: isAndroid
               ? IconButton(
                   tooltip: 'Back',
@@ -406,15 +554,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
 
-        // ======================================================
+        // ====================================================================
         // BODY
-        // ======================================================
+        // ====================================================================
         body: SafeArea(
           child: Column(
             children: [
-              // ==================================================
-              // STAGE DROPDOWN
-              // ==================================================
+              // ==================================================================
+              // DROPDOWNS
+              // ==================================================================
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
 
@@ -422,8 +570,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
+                    // ============================================================
+                    // PLANT
+                    // ============================================================
                     const Text(
-                      'Select Stage',
+                      'Select Plant',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -433,12 +584,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 8),
 
                     DropdownButtonFormField<String>(
-                      value: selectedStage,
+                      value: selectedPlant,
 
                       isExpanded: true,
 
                       decoration: InputDecoration(
-                        hintText: 'Select Stage',
+                        hintText: 'Select Plant',
 
                         prefixIcon: const Icon(Icons.factory),
 
@@ -451,37 +602,89 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ),
 
-                      // ------------------------------------------------
-                      // IMPORTANT:
-                      // stages getter already preserves camera_data.dart
-                      // order. No sorting here.
-                      // ------------------------------------------------
-                      items: stages.map((stage) {
+                      items: plants.map((plant) {
                         return DropdownMenuItem<String>(
-                          value: stage,
-                          child: Text(stage),
+                          value: plant,
+
+                          child: Text(plant, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
 
-                      onChanged: onStageChanged,
+                      onChanged: onPlantChanged,
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // ============================================================
+                    // ZONE
+                    // ============================================================
+                    const Text(
+                      'Select Zone',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    DropdownButtonFormField<String>(
+                      value: selectedZone,
+
+                      isExpanded: true,
+
+                      decoration: InputDecoration(
+                        hintText: selectedPlant == null
+                            ? 'Select Plant first'
+                            : 'Select Zone',
+
+                        prefixIcon: const Icon(Icons.location_on),
+
+                        filled: true,
+
+                        fillColor: Colors.white,
+
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+
+                      items: zonesForSelectedPlant.map((zone) {
+                        return DropdownMenuItem<String>(
+                          value: zone,
+
+                          child: Text(zone, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+
+                      // ----------------------------------------------------------
+                      // Plant select nahi hai to zone disabled.
+                      //
+                      // User agar zone dropdown par click karega,
+                      // to disabled dropdown ke karan select nahi kar payega.
+                      // Hint me "Select Plant first" clearly dikhega.
+                      // ----------------------------------------------------------
+                      onChanged: selectedPlant == null ? null : onZoneChanged,
                     ),
                   ],
                 ),
               ),
 
-              // ==================================================
+              // ==================================================================
               // CAMERA LIST
-              // ==================================================
+              // ==================================================================
               Expanded(
-                child: selectedStage == null
+                child: selectedPlant == null
+                    ? _emptyState(Icons.factory, 'Select a plant to view zones')
+                    : selectedZone == null
                     ? _emptyState(
-                        Icons.factory,
-                        'Select a stage to view cameras',
+                        Icons.location_on,
+                        'Select a zone to view cameras',
                       )
                     : cameras.isEmpty
                     ? _emptyState(
                         Icons.videocam_off,
-                        'No cameras found for this stage',
+                        'No cameras found for this zone',
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
@@ -515,9 +718,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
+  // ==========================================================================
   // EMPTY STATE
-  // ============================================================
+  // ==========================================================================
 
   Widget _emptyState(IconData icon, String message) {
     return Center(
@@ -539,9 +742,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-// =================================================================
+// ============================================================================
 // LAZY CAMERA CARD
-// =================================================================
+// ============================================================================
 
 class _LazyCameraCard extends StatefulWidget {
   final CameraData camera;
@@ -588,9 +791,9 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
 
         children: [
-          // ======================================================
+          // ====================================================================
           // CAMERA HEADER
-          // ======================================================
+          // ====================================================================
           InkWell(
             onTap: widget.onFullScreen,
 
@@ -622,15 +825,16 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
             ),
           ),
 
-          // ======================================================
+          // ====================================================================
           // VIDEO
-          // ======================================================
+          // ====================================================================
           AspectRatio(
             aspectRatio: 16 / 9,
 
             child: _shouldStartPlayer
                 ? CameraPlayer(
                     key: ValueKey(widget.camera.rtspUrl),
+
                     rtspUrl: widget.camera.rtspUrl,
                   )
                 : Container(
@@ -645,9 +849,9 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
                   ),
           ),
 
-          // ======================================================
+          // ====================================================================
           // FULL SCREEN
-          // ======================================================
+          // ====================================================================
           InkWell(
             onTap: widget.onFullScreen,
 
@@ -668,6 +872,7 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
 
                   Text(
                     'Tap for full screen',
+
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.blueGrey.shade600,
@@ -683,9 +888,9 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
   }
 }
 
-// =================================================================
+// ============================================================================
 // PORT BADGE
-// =================================================================
+// ============================================================================
 
 class _PortBadge extends StatelessWidget {
   final String port;
@@ -699,6 +904,7 @@ class _PortBadge extends StatelessWidget {
 
       decoration: BoxDecoration(
         color: Colors.blueGrey.shade800,
+
         borderRadius: BorderRadius.circular(8),
       ),
 
@@ -715,9 +921,12 @@ class _PortBadge extends StatelessWidget {
   }
 }
 
-// =================================================================
+// ============================================================================
 // FULL SCREEN CAMERA
-// =================================================================
+// ============================================================================
+//
+// Existing fullscreen behavior kept as-is.
+// ============================================================================
 
 class FullScreenCamera extends StatefulWidget {
   final CameraData camera;
@@ -738,9 +947,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
     _openLandscape();
   }
 
-  // ============================================================
+  // ==========================================================================
   // LANDSCAPE
-  // ============================================================
+  // ==========================================================================
 
   Future<void> _openLandscape() async {
     await SystemChrome.setPreferredOrientations([
@@ -755,9 +964,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
     });
   }
 
-  // ============================================================
+  // ==========================================================================
   // PORTRAIT
-  // ============================================================
+  // ==========================================================================
 
   Future<void> _openPortrait() async {
     await SystemChrome.setPreferredOrientations([
@@ -772,9 +981,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
     });
   }
 
-  // ============================================================
+  // ==========================================================================
   // TOGGLE ORIENTATION
-  // ============================================================
+  // ==========================================================================
 
   Future<void> _toggleOrientation() async {
     if (_isLandscape) {
@@ -784,9 +993,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
     }
   }
 
-  // ============================================================
+  // ==========================================================================
   // BACK
-  // ============================================================
+  // ==========================================================================
 
   Future<void> _goBack() async {
     await SystemChrome.setPreferredOrientations([
@@ -799,9 +1008,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
     Navigator.pop(context);
   }
 
-  // ============================================================
+  // ==========================================================================
   // DISPOSE
-  // ============================================================
+  // ==========================================================================
 
   @override
   void dispose() {
@@ -813,9 +1022,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
     super.dispose();
   }
 
-  // ============================================================
+  // ==========================================================================
   // BUILD
-  // ============================================================
+  // ==========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -834,9 +1043,9 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
         body: SafeArea(
           child: Column(
             children: [
-              // ==================================================
+              // ==================================================================
               // HEADER
-              // ==================================================
+              // ==================================================================
               Container(
                 height: 56,
                 color: Colors.black,
@@ -875,6 +1084,7 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
 
                       decoration: BoxDecoration(
                         color: Colors.blueGrey.shade800,
+
                         borderRadius: BorderRadius.circular(7),
                       ),
 
@@ -906,13 +1116,14 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                 ),
               ),
 
-              // ==================================================
+              // ==================================================================
               // VIDEO
-              // ==================================================
+              // ==================================================================
               Expanded(
                 child: SizedBox.expand(
                   child: CameraPlayer(
                     key: ValueKey(widget.camera.rtspUrl),
+
                     rtspUrl: widget.camera.rtspUrl,
                   ),
                 ),

@@ -49,6 +49,7 @@ class _SplashScreenState extends State<SplashScreen>
 
       final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
+      // Keep existing splash duration.
       await Future.delayed(const Duration(milliseconds: 2200));
 
       if (!mounted) return;
@@ -69,35 +70,12 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (!mounted) return;
 
-      // Agar session read fail ho jaye,
-      // user ko login screen par bhej denge.
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
     }
   }
-  // Future<void> _checkSession() async {
-  //   final prefs = await SharedPreferences.getInstance();
-
-  //   final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-
-  //   await Future.delayed(const Duration(milliseconds: 2200));
-
-  //   if (!mounted) return;
-
-  //   if (isLoggedIn) {
-  //     Navigator.pushReplacement(
-  //       context,
-  //       MaterialPageRoute(builder: (_) => const HomeScreen()),
-  //     );
-  //   } else {
-  //     Navigator.pushReplacement(
-  //       context,
-  //       MaterialPageRoute(builder: (_) => const LoginScreen()),
-  //     );
-  //   }
-  // }
 
   @override
   void dispose() {
@@ -111,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen>
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Top blue decoration
+          // Top background circle
           Positioned(
             top: -110,
             right: -100,
@@ -125,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // Bottom blue decoration
+          // Bottom background circle
           Positioned(
             bottom: -140,
             left: -100,
@@ -139,6 +117,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
+          // Main content
           Center(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -147,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Logo
+                    // App Icon
                     Container(
                       width: 240,
                       height: 240,
@@ -172,6 +151,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 28),
 
+                    // App Name
                     const Text(
                       'CCTV MOBILE',
                       style: TextStyle(
@@ -184,6 +164,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 8),
 
+                    // Tagline
                     Text(
                       'Secure • Monitor • Control',
                       style: TextStyle(
@@ -196,13 +177,14 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 45),
 
+                    // Loading Indicator
                     SizedBox(
                       width: 35,
                       height: 35,
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          const Color(0xFF0057B8),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF0057B8),
                         ),
                       ),
                     ),
@@ -212,6 +194,7 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
+          // Company Name
           Positioned(
             bottom: 25,
             left: 0,
