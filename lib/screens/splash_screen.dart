@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -49,8 +50,11 @@ class _SplashScreenState extends State<SplashScreen>
 
       final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
 
-      // Keep existing splash duration.
-      await Future.delayed(const Duration(milliseconds: 2200));
+      if (kIsWeb) {
+        await Future.delayed(const Duration(milliseconds: 1000));
+      } else {
+        await Future.delayed(const Duration(milliseconds: 2200));
+      }
 
       if (!mounted) return;
 

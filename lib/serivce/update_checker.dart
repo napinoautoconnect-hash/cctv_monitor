@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_in_store_app_version_checker/flutter_in_store_app_version_checker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,6 +10,18 @@ class UpdateChecker {
   static bool _dialogShowing = false;
 
   static Future<void> checkForUpdate(BuildContext context) async {
+    // ============================================================
+    // WEB
+    // ============================================================
+    //
+    // flutter_in_store_app_version_checker does not have a Web
+    // implementation. So never call the plugin on Chrome/Web.
+    //
+    if (kIsWeb) {
+      debugPrint('UPDATE: Web detected - store update check skipped.');
+      return;
+    }
+
     // Prevent multiple checks at the same time.
     if (_isChecking || _dialogShowing) {
       return;
@@ -94,7 +107,6 @@ class UpdateChecker {
           titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
           contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
           actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-
           title: const Row(
             children: [
               Icon(
@@ -111,7 +123,6 @@ class UpdateChecker {
               ),
             ],
           ),
-
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,9 +131,7 @@ class UpdateChecker {
                 'A new version of CCTV Monitor is available.',
                 style: TextStyle(fontSize: 15, height: 1.4),
               ),
-
               const SizedBox(height: 16),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
@@ -137,9 +146,7 @@ class UpdateChecker {
                       'Current version',
                       currentVersion.isEmpty ? '-' : currentVersion,
                     ),
-
                     const SizedBox(height: 8),
-
                     _versionRow(
                       'New version',
                       newVersion.isEmpty ? '-' : newVersion,
@@ -147,9 +154,7 @@ class UpdateChecker {
                   ],
                 ),
               ),
-
               const SizedBox(height: 14),
-
               Text(
                 'Update now to get the latest features and improvements.',
                 style: TextStyle(
@@ -160,11 +165,7 @@ class UpdateChecker {
               ),
             ],
           ),
-
           actions: [
-            // ========================================================
-            // LATER
-            // ========================================================
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
@@ -174,10 +175,6 @@ class UpdateChecker {
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
-
-            // ========================================================
-            // UPDATE NOW
-            // ========================================================
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF0057B8),
@@ -220,7 +217,6 @@ class UpdateChecker {
           title,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         ),
-
         Text(
           value,
           style: const TextStyle(
@@ -234,7 +230,7 @@ class UpdateChecker {
   }
 
   // ==============================================================
-  // OPEN PLAY STORE
+  // OPEN PLAY STORE / APP STORE
   // ==============================================================
 
   static Future<void> _openStore(String storeUrl) async {

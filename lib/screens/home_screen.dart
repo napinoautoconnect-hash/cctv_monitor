@@ -6,17 +6,10 @@ import '/models/camera_data.dart';
 import 'camera_player.dart';
 import 'login_screen.dart';
 import '../serivce/update_checker.dart';
+import 'package:flutter/foundation.dart';
+
 // ============================================================================
 // CUSTOM ZONE ORDER
-// ============================================================================
-//
-// IMPORTANT:
-// 1. Ye global custom order hai.
-// 2. Har plant ke saare zones yahan hona zaroori nahi.
-// 3. Selected plant ke available zones me se sirf matching zones show honge.
-// 4. Agar camera_data.dart me koi NEW zone hai jo yahan nahi hai,
-//    to wo dropdown ke END me automatically show hoga.
-//
 // ============================================================================
 
 const List<String> zoneOrder = [
@@ -24,6 +17,8 @@ const List<String> zoneOrder = [
   'WIP',
   'MWH Assy',
   'Switch Assy',
+  'Switch',
+  '4 Wheeler',
   'ED Shop Floor',
   'SMT',
   'Through Hole',
@@ -97,23 +92,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     debugPrint('CCTV HOME: HomeScreen initialized');
 
-    // ------------------------------------------------------------
-    // CHECK FOR APP UPDATE
-    // ------------------------------------------------------------
-    //
-    // First frame render hone ke baad check kar rahe hain,
-    // taaki HomeScreen ka BuildContext properly available ho.
-    //
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
 
-      debugPrint('CCTV HOME: Calling UpdateChecker');
+      if (!kIsWeb) {
+        debugPrint('CCTV HOME: Calling UpdateChecker');
 
-      await UpdateChecker.checkForUpdate(context);
+        await UpdateChecker.checkForUpdate(context);
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      debugPrint('CCTV HOME: UpdateChecker completed');
+        debugPrint('CCTV HOME: UpdateChecker completed');
+      } else {
+        debugPrint('CCTV HOME: Web detected - UpdateChecker skipped');
+      }
     });
   }
 
@@ -164,7 +156,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _resumeGeneration++;
       });
 
-      debugPrint('CCTV: CAMERA RESTART GENERATION = $_resumeGeneration');
+      debugPrint(
+        'CCTV: CAMERA RESTART GENERATION = '
+        '$_resumeGeneration',
+      );
     });
   }
 
@@ -182,10 +177,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ==========================================================================
   // PLANTS
   // ==========================================================================
-  //
-  // Plant order camera_data.dart ke order ke according rahega.
-  //
-  // ==========================================================================
 
   List<String> get plants {
     return cameraList.map((camera) => camera.plant).toSet().toList();
@@ -194,54 +185,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ==========================================================================
   // ZONES FOR SELECTED PLANT
   // ==========================================================================
-  //
-  // IMPORTANT:
-  //
-  // Global zoneOrder ke according sorting hogi.
-  //
-  // Lekin selected plant ke jo zones actually available hain,
-  // sirf wahi show honge.
-  //
-  // Example:
-  //
-  // Bhiwadi:
-  //   AWP
-  //   WIP
-  //   Dock Area
-  //
-  // Agar R&D nahi hai to R&D nahi dikhega.
-  //
-  // Agar koi NEW zone camera_data.dart me hai aur zoneOrder me nahi hai,
-  // to wo end me automatically add ho jayega.
-  //
-  // ==========================================================================
 
   List<String> get zonesForSelectedPlant {
     if (selectedPlant == null) {
       return [];
     }
 
-    // ------------------------------------------------------------
-    // Selected plant ke actual available zones
-    // ------------------------------------------------------------
-
     final availableZones = cameraList
         .where((camera) => camera.plant == selectedPlant)
         .map((camera) => camera.zone)
         .toSet();
 
-    // ------------------------------------------------------------
-    // Custom order ke according available zones
-    // ------------------------------------------------------------
-
     final sortedZones = zoneOrder
         .where((zone) => availableZones.contains(zone))
         .toList();
-
-    // ------------------------------------------------------------
-    // New zones jo custom order me nahi hain
-    // Unko end me show karo.
-    // ------------------------------------------------------------
 
     final customZones = availableZones
         .where((zone) => !zoneOrder.contains(zone))
@@ -274,20 +231,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void onPlantChanged(String? plant) {
     if (!mounted) return;
 
-    // ------------------------------------------------------------
-    // Stop currently playing cameras.
-    // ------------------------------------------------------------
-
     CameraPlayer.stopAllPlayers().catchError((error) {
-      debugPrint('PLANT CHANGE: Camera cleanup error: $error');
+      debugPrint(
+        'PLANT CHANGE: Camera cleanup error: '
+        '$error',
+      );
     });
 
     setState(() {
       selectedPlant = plant;
-
-      // Plant change par zone reset.
       selectedZone = null;
-
       _resumeGeneration++;
     });
 
@@ -303,17 +256,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void onZoneChanged(String? zone) {
     if (!mounted) return;
 
-    // ------------------------------------------------------------
-    // Stop old zone cameras.
-    // ------------------------------------------------------------
-
     CameraPlayer.stopAllPlayers().catchError((error) {
-      debugPrint('ZONE CHANGE: Camera cleanup error: $error');
+      debugPrint(
+        'ZONE CHANGE: Camera cleanup error: '
+        '$error',
+      );
     });
 
     setState(() {
       selectedZone = zone;
-
       _resumeGeneration++;
     });
 
@@ -324,10 +275,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // ==========================================================================
   // FULL SCREEN CAMERA
-  // ==========================================================================
-  //
-  // Existing fullscreen logic unchanged.
-  //
   // ==========================================================================
 
   void openFullScreen(CameraData camera) {
@@ -400,21 +347,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // ------------------------------------------------------------
-    // Camera cleanup without blocking exit.
-    // ------------------------------------------------------------
-
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
-        debugPrint('BACK: Camera cleanup error: $error');
+        debugPrint(
+          'BACK: Camera cleanup error: '
+          '$error',
+        );
       });
     } catch (e) {
-      debugPrint('BACK: Camera cleanup exception: $e');
+      debugPrint(
+        'BACK: Camera cleanup exception: '
+        '$e',
+      );
     }
-
-    // ------------------------------------------------------------
-    // Android exit.
-    // ------------------------------------------------------------
 
     await SystemNavigator.pop();
   }
@@ -458,10 +403,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
-    // ------------------------------------------------------------
-    // CLEAR SESSION
-    // ------------------------------------------------------------
-
     try {
       final prefs = await SharedPreferences.getInstance();
 
@@ -474,25 +415,114 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (!mounted) return;
 
-    // ------------------------------------------------------------
-    // CAMERA CLEANUP
-    // ------------------------------------------------------------
-
     try {
       CameraPlayer.stopAllPlayers().catchError((error) {
-        debugPrint('LOGOUT: Camera cleanup error: $error');
+        debugPrint(
+          'LOGOUT: Camera cleanup error: '
+          '$error',
+        );
       });
     } catch (e) {
-      debugPrint('LOGOUT: Camera cleanup exception: $e');
+      debugPrint(
+        'LOGOUT: Camera cleanup exception: '
+        '$e',
+      );
     }
-
-    // ------------------------------------------------------------
-    // GO TO LOGIN
-    // ------------------------------------------------------------
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  // ==========================================================================
+  // RESPONSIVE WEB GRID
+  // ==========================================================================
+
+  Widget _buildWebCameraGrid(List<CameraData> cameras) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+
+        int crossAxisCount;
+
+        // --------------------------------------------------------------
+        // WEB BREAKPOINTS
+        //
+        // 1200+  => 4 cameras
+        // 900+   => 3 cameras
+        // 600+   => 2 cameras
+        // <600   => 1 camera
+        // --------------------------------------------------------------
+
+        if (width >= 1200) {
+          crossAxisCount = 4;
+        } else if (width >= 900) {
+          crossAxisCount = 3;
+        } else if (width >= 600) {
+          crossAxisCount = 2;
+        } else {
+          crossAxisCount = 1;
+        }
+
+        // --------------------------------------------------------------
+        // CARD WIDTH
+        //
+        // Available width ke according calculate hoti hai.
+        // Card ko unnecessarily bahut narrow nahi hone dete.
+        // --------------------------------------------------------------
+
+        const horizontalPadding = 24.0;
+        const gap = 10.0;
+
+        final availableWidth =
+            width - horizontalPadding - ((crossAxisCount - 1) * gap);
+
+        final cardWidth = availableWidth / crossAxisCount;
+
+        debugPrint(
+          'CCTV WEB GRID | '
+          'Width=$width | '
+          'Columns=$crossAxisCount | '
+          'CardWidth=$cardWidth',
+        );
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
+
+          cacheExtent: 500,
+
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+
+            crossAxisSpacing: gap,
+
+            mainAxisSpacing: gap,
+
+            // Header + video + footer ka
+            // balanced card ratio.
+            childAspectRatio: 16 / 10,
+          ),
+
+          itemCount: cameras.length,
+
+          itemBuilder: (context, index) {
+            final camera = cameras[index];
+
+            return _LazyCameraCard(
+              key: ValueKey(
+                '${camera.rtspUrl}_'
+                '$_resumeGeneration',
+              ),
+              camera: camera,
+              isWeb: true,
+              onFullScreen: () {
+                openFullScreen(camera);
+              },
+            );
+          },
+        );
+      },
     );
   }
 
@@ -508,7 +538,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return PopScope(
       canPop: !isAndroid,
-
       onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) {
           return;
@@ -518,7 +547,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _handleBackPress();
         }
       },
-
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F6F8),
 
@@ -530,11 +558,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             'CCTV Monitor',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
-
           centerTitle: true,
-
           backgroundColor: const Color(0xFF0057B8),
-
           foregroundColor: Colors.white,
 
           leading: isAndroid
@@ -565,14 +590,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // ==================================================================
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-
                   children: [
-                    // ============================================================
-                    // PLANT
-                    // ============================================================
                     const Text(
                       'Select Plant',
                       style: TextStyle(
@@ -585,18 +605,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                     DropdownButtonFormField<String>(
                       value: selectedPlant,
-
                       isExpanded: true,
 
                       decoration: InputDecoration(
                         hintText: 'Select Plant',
-
                         prefixIcon: const Icon(Icons.factory),
-
                         filled: true,
-
                         fillColor: Colors.white,
-
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -605,7 +620,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       items: plants.map((plant) {
                         return DropdownMenuItem<String>(
                           value: plant,
-
                           child: Text(plant, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
@@ -615,9 +629,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                     const SizedBox(height: 14),
 
-                    // ============================================================
-                    // ZONE
-                    // ============================================================
                     const Text(
                       'Select Zone',
                       style: TextStyle(
@@ -630,20 +641,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
                     DropdownButtonFormField<String>(
                       value: selectedZone,
-
                       isExpanded: true,
 
                       decoration: InputDecoration(
                         hintText: selectedPlant == null
                             ? 'Select Plant first'
                             : 'Select Zone',
-
                         prefixIcon: const Icon(Icons.location_on),
-
                         filled: true,
-
                         fillColor: Colors.white,
-
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -652,18 +658,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       items: zonesForSelectedPlant.map((zone) {
                         return DropdownMenuItem<String>(
                           value: zone,
-
                           child: Text(zone, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
 
-                      // ----------------------------------------------------------
-                      // Plant select nahi hai to zone disabled.
-                      //
-                      // User agar zone dropdown par click karega,
-                      // to disabled dropdown ke karan select nahi kar payega.
-                      // Hint me "Select Plant first" clearly dikhega.
-                      // ----------------------------------------------------------
                       onChanged: selectedPlant == null ? null : onZoneChanged,
                     ),
                   ],
@@ -671,7 +669,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
 
               // ==================================================================
-              // CAMERA LIST
+              // CAMERA LIST / WEB GRID
               // ==================================================================
               Expanded(
                 child: selectedPlant == null
@@ -686,12 +684,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         Icons.videocam_off,
                         'No cameras found for this zone',
                       )
-                    : ListView.builder(
+                    : kIsWeb
+                    ? _buildWebCameraGrid(cameras)
+                    :
+                      // ====================================================
+                      // MOBILE
+                      // ====================================================
+                      ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
 
                         cacheExtent: 50,
 
                         itemCount: cameras.length,
+
+                        // 12px vertical gap
+                        separatorBuilder: (context, index) {
+                          return const SizedBox(height: 12);
+                        },
 
                         itemBuilder: (context, index) {
                           final camera = cameras[index];
@@ -701,9 +710,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               '${camera.rtspUrl}_'
                               '$_resumeGeneration',
                             ),
-
                             camera: camera,
-
+                            isWeb: false,
                             onFullScreen: () {
                               openFullScreen(camera);
                             },
@@ -726,7 +734,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-
         children: [
           Icon(icon, size: 60, color: Colors.blueGrey.shade300),
 
@@ -734,6 +741,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
           Text(
             message,
+            textAlign: TextAlign.center,
             style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 15),
           ),
         ],
@@ -748,12 +756,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
 class _LazyCameraCard extends StatefulWidget {
   final CameraData camera;
+
   final VoidCallback onFullScreen;
+
+  final bool isWeb;
 
   const _LazyCameraCard({
     super.key,
     required this.camera,
     required this.onFullScreen,
+    required this.isWeb,
   });
 
   @override
@@ -776,42 +788,68 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
     });
   }
 
+  // ==========================================================================
+  // VIDEO WIDGET
+  // ==========================================================================
+
+  Widget _buildVideo() {
+    if (_shouldStartPlayer) {
+      return CameraPlayer(
+        key: ValueKey(widget.camera.rtspUrl),
+        rtspUrl: widget.camera.rtspUrl,
+        mediaMtxPath: widget.camera.mediaMtxPath,
+      );
+    }
+
+    return Container(
+      color: Colors.black,
+      child: const Center(
+        child: Text(
+          'Waiting...',
+          style: TextStyle(color: Colors.white54, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================================================
+  // BUILD CARD
+  // ==========================================================================
+
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-
+      margin: EdgeInsets.zero,
       elevation: 3,
-
       clipBehavior: Clip.antiAlias,
 
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: InkWell(
+        onTap: widget.onFullScreen,
 
-        children: [
-          // ====================================================================
-          // CAMERA HEADER
-          // ====================================================================
-          InkWell(
-            onTap: widget.onFullScreen,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
 
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 10, 10),
+          children: [
+            // ==================================================================
+            // CAMERA HEADER
+            // ==================================================================
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
 
               child: Row(
                 children: [
-                  const Icon(Icons.videocam, size: 21),
+                  const Icon(Icons.videocam, size: 19),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 7),
 
                   Expanded(
                     child: Text(
                       widget.camera.cameraName,
 
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
 
@@ -823,40 +861,33 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
                 ],
               ),
             ),
-          ),
 
-          // ====================================================================
-          // VIDEO
-          // ====================================================================
-          AspectRatio(
-            aspectRatio: 16 / 9,
+            // ==================================================================
+            // VIDEO
+            // ==================================================================
 
-            child: _shouldStartPlayer
-                ? CameraPlayer(
-                    key: ValueKey(widget.camera.rtspUrl),
+            // WEB:
+            // GridView tile ki height
+            // bounded hoti hai.
+            //
+            // Isliye Expanded safe hai.
+            //
+            // MOBILE:
+            // ListView ke andar height
+            // unbounded hoti hai.
+            //
+            // Isliye AspectRatio use
+            // kar rahe hain.
+            if (widget.isWeb)
+              Expanded(child: _buildVideo())
+            else
+              AspectRatio(aspectRatio: 16 / 9, child: _buildVideo()),
 
-                    rtspUrl: widget.camera.rtspUrl,
-                  )
-                : Container(
-                    color: Colors.black,
-
-                    child: const Center(
-                      child: Text(
-                        'Waiting...',
-                        style: TextStyle(color: Colors.white54, fontSize: 13),
-                      ),
-                    ),
-                  ),
-          ),
-
-          // ====================================================================
-          // FULL SCREEN
-          // ====================================================================
-          InkWell(
-            onTap: widget.onFullScreen,
-
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            // ==================================================================
+            // FULL SCREEN FOOTER
+            // ==================================================================
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
 
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -864,7 +895,7 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
                 children: [
                   Icon(
                     Icons.fullscreen,
-                    size: 19,
+                    size: 18,
                     color: Colors.blueGrey.shade600,
                   ),
 
@@ -872,17 +903,16 @@ class _LazyCameraCardState extends State<_LazyCameraCard> {
 
                   Text(
                     'Tap for full screen',
-
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.blueGrey.shade600,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -900,20 +930,18 @@ class _PortBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
 
       decoration: BoxDecoration(
         color: Colors.blueGrey.shade800,
-
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(7),
       ),
 
       child: Text(
         port,
-
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -923,9 +951,6 @@ class _PortBadge extends StatelessWidget {
 
 // ============================================================================
 // FULL SCREEN CAMERA
-// ============================================================================
-//
-// Existing fullscreen behavior kept as-is.
 // ============================================================================
 
 class FullScreenCamera extends StatefulWidget {
@@ -1123,8 +1148,8 @@ class _FullScreenCameraState extends State<FullScreenCamera> {
                 child: SizedBox.expand(
                   child: CameraPlayer(
                     key: ValueKey(widget.camera.rtspUrl),
-
                     rtspUrl: widget.camera.rtspUrl,
+                    mediaMtxPath: widget.camera.mediaMtxPath,
                   ),
                 ),
               ),
