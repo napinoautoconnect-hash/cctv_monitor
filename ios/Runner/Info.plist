@@ -7,7 +7,6 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 
-```
 <key>CFBundleDevelopmentRegion</key>
 <string>$(DEVELOPMENT_LANGUAGE)</string>
 
@@ -93,7 +92,6 @@
 	<string>UIInterfaceOrientationLandscapeLeft</string>
 	<string>UIInterfaceOrientationLandscapeRight</string>
 </array>
-```
 
 </dict>
 </plist>
