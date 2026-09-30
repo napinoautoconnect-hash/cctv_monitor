@@ -8,8 +8,10 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-// const String mediaMtxServer = '14.140.246.38';
-const String mediaMtxServer = '172.16.34.43';
+const String mediaMtxServer = '14.140.246.38';
+// const String mediaMtxServer = '172.16.34.43';
+// const String mediaMtxServer = 'http://napinoconnect.com:94/MediaMTX/';
+
 const int mediaMtxWebRtcPort = 8889;
 
 String getWhepUrl(String path) {

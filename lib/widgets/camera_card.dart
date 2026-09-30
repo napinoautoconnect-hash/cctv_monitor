@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/camera.dart';
 import '../screens/fullscreen_player.dart';
-import 'camera_player.dart';
+import '../screens/camera_player.dart';
 
 class CameraCard extends StatelessWidget {
   final Camera camera;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/camera.dart';
-import '../widgets/camera_player.dart';
+import 'camera_player.dart';
 
 class FullScreenPlayer extends StatelessWidget {
   final Camera camera;

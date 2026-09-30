@@ -131,8 +131,9 @@ class _CameraPlayerState extends State<CameraPlayer> {
   // ==============================================================
 
   // static const String mediaMtxServer = '172.16.86.209';
-  static const String mediaMtxServer = '172.16.34.43';
-  // static const String mediaMtxServer = '14.140.246.38';
+  // static const String mediaMtxServer = '172.16.34.43';
+  static const String mediaMtxServer = '14.140.246.38';
+  // static const String mediaMtxServer = 'http://napinoconnect.com:94/MediaMTX/';
 
   static const int mediaMtxWebRtcPort = 8889;
 
