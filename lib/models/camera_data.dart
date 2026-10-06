@@ -2713,6 +2713,329 @@ const List<CameraData> cameraList = [
     port: '54',
     mediaMtxPath: 'pune-rd-54-ch2101-camera-21',
   ),
+
+  // ============================================================
+  // KRISHNAGIRI
+  // ============================================================
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera1',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=1&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-1',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera2',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=2&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-2',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera3',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=3&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-3',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera4',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=4&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-4',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera5',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=5&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-5',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera6',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=6&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-6',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera7',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=7&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-7',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera8',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=8&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-8',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Office Ground Floor',
+    cameraName: 'Camera9',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=9&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-office-ground-floor-camera-9',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera10',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=10&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-10',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera11',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=11&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-11',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera12',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=12&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-12',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera13',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=13&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-13',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera14',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=14&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-14',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera15',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=15&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-15',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Office Ground Floor',
+    cameraName: 'Camera16',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=16&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-office-ground-floor-camera-16',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera17',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=17&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-17',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Office Ground Floor',
+    cameraName: 'Camera18',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=18&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-office-ground-floor-camera-18',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Outer Periphery & Gates',
+    cameraName: 'Camera19',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=19&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-outer-periphery-gates-camera-19',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Office Ground Floor',
+    cameraName: 'Camera20',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=20&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-office-ground-floor-camera-20',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera21',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=21&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-21',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera22',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=22&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-22',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera23',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=23&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-23',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera24',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=24&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-24',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera25',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=25&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-25',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera26',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=26&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-26',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera27',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=27&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-27',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera28',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=28&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-28',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera29',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=29&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-29',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera30',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=30&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-30',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera31',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=31&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-31',
+  ),
+
+  CameraData(
+    plant: 'Krishnagiri',
+    zone: 'Other Area',
+    cameraName: 'Camera32',
+    rtspUrl:
+        'rtsp://admin:cctv%402025%24@115.240.235.147:554/cam/realmonitor?channel=32&subtype=0',
+    port: '147',
+    mediaMtxPath: 'krishnagiri-other-area-camera-32',
+  ),
 ];
 
 

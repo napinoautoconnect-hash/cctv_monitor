@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -133,7 +134,6 @@ class _CameraPlayerState extends State<CameraPlayer> {
   // static const String mediaMtxServer = '172.16.86.209';
   // static const String mediaMtxServer = '172.16.34.43';
   static const String mediaMtxServer = '14.140.246.38';
-  // static const String mediaMtxServer = 'http://napinoconnect.com:94/MediaMTX/';
 
   static const int mediaMtxWebRtcPort = 8889;
 
@@ -145,6 +145,164 @@ class _CameraPlayerState extends State<CameraPlayer> {
     }
 
     return 'http://$mediaMtxServer:$mediaMtxWebRtcPort/$path/whep';
+  }
+
+  // ==============================================================
+  // ZOOM
+  // ==============================================================
+
+  static const double _minZoom = 1.0;
+  static const double _maxZoom = 4.0;
+
+  double _zoom = 1.0;
+
+  final TransformationController _zoomController = TransformationController();
+
+  // --------------------------------------------------------------
+  // RESET ZOOM
+  // --------------------------------------------------------------
+
+  void _resetZoom() {
+    if (_zoom == 1.0) {
+      return;
+    }
+
+    setState(() {
+      _zoom = 1.0;
+      _zoomController.value = Matrix4.identity();
+    });
+  }
+
+  // --------------------------------------------------------------
+  // DOUBLE TAP
+  //
+  // First double tap:
+  //     1x -> 2x
+  //
+  // Second double tap:
+  //     2x/4x -> 1x
+  // --------------------------------------------------------------
+
+  void _handleDoubleTap() {
+    if (_zoom <= 1.0) {
+      setState(() {
+        _zoom = 2.0;
+
+        _zoomController.value = Matrix4.identity()..scale(_zoom);
+      });
+    } else {
+      _resetZoom();
+    }
+  }
+
+  // --------------------------------------------------------------
+  // ZOOM FROM MOUSE WHEEL
+  //
+  // Web only.
+  //
+  // Scroll up   = zoom in
+  // Scroll down = zoom out
+  // --------------------------------------------------------------
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (!_isWeb) return;
+
+    if (event is! PointerScrollEvent) return;
+
+    final double delta = event.scrollDelta.dy;
+
+    double newZoom = _zoom;
+
+    if (delta < 0) {
+      newZoom += 0.25;
+    } else if (delta > 0) {
+      newZoom -= 0.25;
+    }
+
+    newZoom = newZoom.clamp(_minZoom, _maxZoom);
+
+    if ((newZoom - _zoom).abs() < 0.001) return;
+
+    final double oldZoom = _zoom;
+
+    setState(() {
+      _zoom = newZoom;
+    });
+
+    // Preserve current pan position while changing zoom.
+    final Matrix4 matrix = _zoomController.value.clone();
+
+    final double scaleRatio = newZoom / oldZoom;
+
+    matrix.scale(scaleRatio);
+
+    _zoomController.value = matrix;
+  }
+
+  // --------------------------------------------------------------
+  // ZOOM TRANSFORMATION
+  // --------------------------------------------------------------
+
+  Widget _buildZoomableVideo({required Widget child}) {
+    return Listener(
+      onPointerSignal: _handlePointerSignal,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onDoubleTap: _handleDoubleTap,
+        child: InteractiveViewer(
+          transformationController: _zoomController,
+
+          // Zoom limits
+          minScale: 1.0,
+          maxScale: 4.0,
+
+          // Important: allow movement in all directions
+          panEnabled: true,
+          scaleEnabled: true,
+
+          // Allow the zoomed video to move freely
+          boundaryMargin: const EdgeInsets.all(double.infinity),
+
+          // Keep video inside its viewport
+          clipBehavior: Clip.hardEdge,
+
+          onInteractionUpdate: (details) {
+            final matrix = _zoomController.value;
+
+            final scale = matrix.getMaxScaleOnAxis().clamp(_minZoom, _maxZoom);
+
+            if ((_zoom - scale).abs() > 0.001) {
+              setState(() {
+                _zoom = scale;
+              });
+            }
+          },
+
+          onInteractionEnd: (details) {
+            final matrix = _zoomController.value;
+            final scale = matrix.getMaxScaleOnAxis();
+
+            if (scale <= 1.001) {
+              _zoomController.value = Matrix4.identity();
+
+              if (_zoom != 1.0) {
+                setState(() {
+                  _zoom = 1.0;
+                });
+              }
+            }
+          },
+
+          child: Center(
+            child: SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // ==============================================================
@@ -959,6 +1117,8 @@ class _CameraPlayerState extends State<CameraPlayer> {
     _player = null;
     _controller = null;
 
+    _zoomController.dispose();
+
     CameraPlayer._unregister(this);
   }
 
@@ -1069,6 +1229,8 @@ class _CameraPlayerState extends State<CameraPlayer> {
     if (_disposed) {
       CameraPlayer._unregister(this);
 
+      _zoomController.dispose();
+
       super.dispose();
 
       return;
@@ -1143,6 +1305,8 @@ class _CameraPlayerState extends State<CameraPlayer> {
 
     _player = null;
     _controller = null;
+
+    _zoomController.dispose();
 
     CameraPlayer._unregister(this);
 
@@ -1376,11 +1540,13 @@ class _CameraPlayerState extends State<CameraPlayer> {
                   // ------------------------------------------------
                   if (renderer != null)
                     Positioned.fill(
-                      child: RTCVideoView(
-                        renderer,
-                        objectFit:
-                            RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
-                        mirror: false,
+                      child: _buildZoomableVideo(
+                        child: RTCVideoView(
+                          renderer,
+                          objectFit: RTCVideoViewObjectFit
+                              .RTCVideoViewObjectFitContain,
+                          mirror: false,
+                        ),
                       ),
                     ),
 
@@ -1437,10 +1603,12 @@ class _CameraPlayerState extends State<CameraPlayer> {
                 // VIDEO
                 // ------------------------------------------------
                 Positioned.fill(
-                  child: Video(
-                    controller: controller,
-                    controls: NoVideoControls,
-                    fit: BoxFit.contain,
+                  child: _buildZoomableVideo(
+                    child: Video(
+                      controller: controller,
+                      controls: NoVideoControls,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
 

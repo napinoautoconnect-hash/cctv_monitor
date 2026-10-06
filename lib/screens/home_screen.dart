@@ -49,10 +49,7 @@ const List<String> zoneOrder = [
   'Gallery',
   'Scrap Yard',
   'Stairs',
-  'Zone 1',
-  'Zone 2',
-  'Zone 3',
-  'Zone 4',
+  'Other Area',
 ];
 
 // ============================================================================
